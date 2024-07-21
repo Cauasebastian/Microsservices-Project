@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.sebastiandev.orderservice.dto.InventoryResponse;
 import org.sebastiandev.orderservice.dto.OrderRequest;
+import org.sebastiandev.orderservice.dto.OrderResponse;
 import org.sebastiandev.orderservice.model.Order;
 import org.sebastiandev.orderservice.model.OrderLineItems;
 import org.sebastiandev.orderservice.repository.OrderRepository;
@@ -24,12 +25,10 @@ import java.util.UUID;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
-
     private final WebClient webClient;
 
-
     @Override
-    public void placeOrder(OrderRequest orderRequest) {
+    public OrderResponse placeOrder(OrderRequest orderRequest) {
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
 
@@ -37,7 +36,6 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderLineItems> orderLineItems = new ArrayList<>();
         orderRequest.orderLineItems()
-                .stream()
                 .forEach(orderLineItemsDTO -> {
                     OrderLineItems orderLineItem = new OrderLineItems();
                     orderLineItem.setSkuCode(orderLineItemsDTO.skuCode());
@@ -49,24 +47,32 @@ public class OrderServiceImpl implements OrderService {
 
         List<String> skuCode = order.getOrderLineItems().stream().map(OrderLineItems::getSkuCode).toList();
 
-        //call inventoryService to check inventory and place order if inventory is available
-        InventoryResponse[] inventoryResponseArray = webClient.get()
-                .uri("http://localhost:8082/inventory",uriBuilder -> uriBuilder.queryParam("skuCode", skuCode).build())
-                .retrieve()
-                .bodyToMono(InventoryResponse[].class)
-                .block();
+        try {
+            // call inventoryService to check inventory and place order if inventory is available
+            InventoryResponse[] inventoryResponseArray = webClient.get()
+                    .uri("http://localhost:8082/inventory", uriBuilder -> uriBuilder.queryParam("skuCode", skuCode).build())
+                    .retrieve()
+                    .bodyToMono(InventoryResponse[].class)
+                    .block();
 
-        Boolean AllProductsInStock = Arrays.stream(inventoryResponseArray).allMatch(InventoryResponse::inStock);
+            if (inventoryResponseArray == null) {
+                log.error("Inventory response is null, cannot place order");
+                return new OrderResponse("Order cannot be placed as inventory service is unavailable", null);
+            }
 
-       try {
-           if (AllProductsInStock) {
-               orderRepository.save(order);
-               log.info("Order placed successfully");
-           } else {
-               log.error("Order cannot be placed as some products are out of stock");
-           }
-       } catch (Exception e) {
-           log.error("Error occurred while placing order: {}", e.getMessage());
-       }
+            boolean allProductsInStock = Arrays.stream(inventoryResponseArray).allMatch(InventoryResponse::inStock);
+
+            if (allProductsInStock) {
+                orderRepository.save(order);
+                log.info("Order placed successfully, Order number: {}", order.getOrderNumber());
+                return new OrderResponse("Order placed successfully", order.getOrderNumber());
+            } else {
+                log.error("Order cannot be placed as some products are out of stock");
+                return new OrderResponse("Order cannot be placed as some products are out of stock", null);
+            }
+        } catch (Exception e) {
+            log.error("Error occurred while placing order: {}", e.getMessage());
+            return new OrderResponse("Order cannot be placed due to an internal error", null);
+        }
     }
 }
