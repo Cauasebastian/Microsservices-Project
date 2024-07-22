@@ -25,7 +25,7 @@ import java.util.UUID;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
-    private final WebClient webClient;
+    private final WebClient.Builder webClientBuilder;
 
     @Override
     public OrderResponse placeOrder(OrderRequest orderRequest) {
@@ -49,8 +49,8 @@ public class OrderServiceImpl implements OrderService {
 
         try {
             // call inventoryService to check inventory and place order if inventory is available
-            InventoryResponse[] inventoryResponseArray = webClient.get()
-                    .uri("http://localhost:8082/inventory", uriBuilder -> uriBuilder.queryParam("skuCode", skuCode).build())
+            InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
+                    .uri("http://Inventory-Service/inventory", uriBuilder -> uriBuilder.queryParam("skuCode", skuCode).build())
                     .retrieve()
                     .bodyToMono(InventoryResponse[].class)
                     .block();
