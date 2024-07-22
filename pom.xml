@@ -13,6 +13,7 @@
         <module>Order-Service</module>
         <module>Inventory-Service</module>
         <module>Discovery-Service</module>
+        <module>Gateway-Service</module>
     </modules>
 
     <properties>
