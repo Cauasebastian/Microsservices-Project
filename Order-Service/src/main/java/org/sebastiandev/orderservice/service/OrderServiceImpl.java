@@ -1,6 +1,5 @@
 package org.sebastiandev.orderservice.service;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.sebastiandev.orderservice.dto.InventoryResponse;
@@ -13,10 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,50 +26,53 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponse placeOrder(OrderRequest orderRequest) {
+        // Construa os itens do pedido
+        List<OrderLineItems> orderLineItems = new ArrayList<>();
+        orderRequest.orderLineItems().forEach(item -> {
+            OrderLineItems lineItem = new OrderLineItems();
+            lineItem.setSkuCode(item.skuCode());
+            lineItem.setPrice(item.price());
+            lineItem.setQuantity(item.quantity());
+            orderLineItems.add(lineItem);
+        });
+
+        // Extraia os códigos SKU dos itens do pedido
+        List<String> skuCodes = orderLineItems.stream()
+                .map(OrderLineItems::getSkuCode)
+                .toList();
+
+        // Faça a solicitação ao serviço de inventário para verificar o estoque
+        InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
+                .uri("http://inventory-service/inventory", uriBuilder -> uriBuilder.queryParam("skuCode", skuCodes).build())
+                .retrieve()
+                .bodyToMono(InventoryResponse[].class)
+                .block();
+
+        // Converta o array de InventoryResponse em um mapa para facilitar a verificação
+        Map<String, InventoryResponse> inventoryResponseMap = Arrays.stream(inventoryResponseArray)
+                .collect(Collectors.toMap(InventoryResponse::skuCode, response -> response));
+
+        // Verifique se todos os itens do pedido estão em estoque e a quantidade é suficiente
+        boolean allProductsInStock = orderLineItems.stream().allMatch(item -> {
+            InventoryResponse inventoryResponse = inventoryResponseMap.get(item.getSkuCode());
+            return inventoryResponse != null && inventoryResponse.inStock() && inventoryResponse.availableQuantity() >= item.getQuantity();
+        });
+
+        if (!allProductsInStock) {
+            return OrderResponse.builder()
+                    .message("Some products are out of stock or insufficient quantity")
+                    .build();
+        }
+
+        // Processar o pedido se tudo está em estoque
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
-
-        log.info("Order number: {}", order.getOrderNumber());
-
-        List<OrderLineItems> orderLineItems = new ArrayList<>();
-        orderRequest.orderLineItems()
-                .forEach(orderLineItemsDTO -> {
-                    OrderLineItems orderLineItem = new OrderLineItems();
-                    orderLineItem.setSkuCode(orderLineItemsDTO.skuCode());
-                    orderLineItem.setPrice(orderLineItemsDTO.price());
-                    orderLineItem.setQuantity(orderLineItemsDTO.quantity());
-                    orderLineItems.add(orderLineItem);
-                });
         order.setOrderLineItems(orderLineItems);
+        orderRepository.save(order);
 
-        List<String> skuCode = order.getOrderLineItems().stream().map(OrderLineItems::getSkuCode).toList();
-
-        try {
-            // call inventoryService to check inventory and place order if inventory is available
-            InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
-                    .uri("http://Inventory-Service/inventory", uriBuilder -> uriBuilder.queryParam("skuCode", skuCode).build())
-                    .retrieve()
-                    .bodyToMono(InventoryResponse[].class)
-                    .block();
-
-            if (inventoryResponseArray == null) {
-                log.error("Inventory response is null, cannot place order");
-                return new OrderResponse("Order cannot be placed as inventory service is unavailable", null);
-            }
-
-            boolean allProductsInStock = Arrays.stream(inventoryResponseArray).allMatch(InventoryResponse::inStock);
-
-            if (allProductsInStock) {
-                orderRepository.save(order);
-                log.info("Order placed successfully, Order number: {}", order.getOrderNumber());
-                return new OrderResponse("Order placed successfully", order.getOrderNumber());
-            } else {
-                log.error("Order cannot be placed as some products are out of stock");
-                return new OrderResponse("Order cannot be placed as some products are out of stock", null);
-            }
-        } catch (Exception e) {
-            log.error("Error occurred while placing order: {}", e.getMessage());
-            return new OrderResponse("Order cannot be placed due to an internal error", null);
-        }
+        return OrderResponse.builder()
+                .orderNumber(order.getOrderNumber())
+                .message("Order placed successfully")
+                .build();
     }
 }
