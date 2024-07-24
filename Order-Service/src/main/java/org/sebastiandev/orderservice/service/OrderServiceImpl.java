@@ -1,5 +1,7 @@
 package org.sebastiandev.orderservice.service;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.sebastiandev.orderservice.dto.InventoryResponse;
@@ -23,6 +25,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClientBuilder;
+    private final ObservationRegistry observationRegistry;
 
     @Override
     public OrderResponse placeOrder(OrderRequest orderRequest) {
@@ -39,24 +42,27 @@ public class OrderServiceImpl implements OrderService {
         // Extraia os códigos SKU dos itens do pedido
         List<String> skuCodes = orderLineItems.stream()
                 .map(OrderLineItems::getSkuCode)
-                .toList();
+                .collect(Collectors.toList());
 
+        // Crie uma observação para o serviço de inventário
+        Observation inventoryServiceObservation = Observation.createNotStarted("inventory-service-lookup",
+                this.observationRegistry);
+        inventoryServiceObservation.lowCardinalityKeyValue("call", "inventory-service");
+        return inventoryServiceObservation.observe(() -> {
         // Faça a solicitação ao serviço de inventário para verificar o estoque
         InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
-                .uri("http://inventory-service/inventory", uriBuilder -> uriBuilder.queryParam("skuCode", skuCodes).build())
+                .uri("http://inventory-service/inventory", uriBuilder -> uriBuilder.queryParam("skuCode", skuCodes.toArray()).build())
                 .retrieve()
                 .bodyToMono(InventoryResponse[].class)
                 .block();
 
-        // Converta o array de InventoryResponse em um mapa para facilitar a verificação
-        Map<String, InventoryResponse> inventoryResponseMap = Arrays.stream(inventoryResponseArray)
-                .collect(Collectors.toMap(InventoryResponse::skuCode, response -> response));
+        // Crie um mapa de SKU para o status de estoque
+        Map<String, Boolean> inventoryMap = Arrays.stream(inventoryResponseArray)
+                .collect(Collectors.toMap(InventoryResponse::skuCode, InventoryResponse::inStock));
 
-        // Verifique se todos os itens do pedido estão em estoque e a quantidade é suficiente
-        boolean allProductsInStock = orderLineItems.stream().allMatch(item -> {
-            InventoryResponse inventoryResponse = inventoryResponseMap.get(item.getSkuCode());
-            return inventoryResponse != null && inventoryResponse.inStock() && inventoryResponse.availableQuantity() >= item.getQuantity();
-        });
+        // Verifique se todos os produtos estão em estoque
+        boolean allProductsInStock = orderLineItems.stream()
+                .allMatch(item -> inventoryMap.getOrDefault(item.getSkuCode(), false));
 
         if (!allProductsInStock) {
             return OrderResponse.builder()
@@ -65,6 +71,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // Processar o pedido se tudo está em estoque
+            if(allProductsInStock){
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
         order.setOrderLineItems(orderLineItems);
@@ -74,5 +81,9 @@ public class OrderServiceImpl implements OrderService {
                 .orderNumber(order.getOrderNumber())
                 .message("Order placed successfully")
                 .build();
+    }else {
+                throw new IllegalArgumentException("Product is not in stock, please try again later");
+            }
+        });
     }
 }
