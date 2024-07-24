@@ -7,9 +7,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.sebastiandev.orderservice.dto.InventoryResponse;
 import org.sebastiandev.orderservice.dto.OrderRequest;
 import org.sebastiandev.orderservice.dto.OrderResponse;
+import org.sebastiandev.orderservice.event.OrderPlacedEvent;
 import org.sebastiandev.orderservice.model.Order;
 import org.sebastiandev.orderservice.model.OrderLineItems;
 import org.sebastiandev.orderservice.repository.OrderRepository;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -26,6 +28,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClientBuilder;
     private final ObservationRegistry observationRegistry;
+    private final KafkaTemplate<String,OrderPlacedEvent> kafkaTemplate;
 
     @Override
     public OrderResponse placeOrder(OrderRequest orderRequest) {
@@ -76,6 +79,7 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderNumber(UUID.randomUUID().toString());
         order.setOrderLineItems(orderLineItems);
         orderRepository.save(order);
+        kafkaTemplate.send("notificationTopic", new OrderPlacedEvent(order.getOrderNumber()));
 
         return OrderResponse.builder()
                 .orderNumber(order.getOrderNumber())
