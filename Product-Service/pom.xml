@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>org.sebastianDev</groupId>
-    <artifactId>Product-Service</artifactId>
+    <artifactId>product-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>Product-Service</name>
     <description>Product-Service</description>
@@ -38,7 +38,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -49,13 +48,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.testcontainers/mongodb -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>mongodb</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.testcontainers/junit-jupiter -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -70,13 +67,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/io.micrometer/micrometer-tracing-bridge-brave -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing-bridge-brave</artifactId>
             <version>1.3.2</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/io.zipkin.reporter2/zipkin-reporter-brave -->
         <dependency>
             <groupId>io.zipkin.reporter2</groupId>
             <artifactId>zipkin-reporter-brave</artifactId>
@@ -109,7 +104,27 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.3.2</version>
+                <configuration>
+                    <from>
+                        <image>eclipse-temurin:21-jdk-alpine</image>
+                    </from>
+                    <to>
+                        <image>registry.hub.docker.com/cauasebastian/${project.artifactId}</image>
+                    </to>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>dockerBuild</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-
 </project>

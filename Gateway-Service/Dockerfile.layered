@@ -1,0 +1,18 @@
+# Stage 1: Builder image
+FROM openjdk:24-slim-bullseye AS builder
+WORKDIR /application
+# Suponho que você esteja usando o Spring Boot com layertools para extrair as camadas
+ADD target/*.jar app.jar
+RUN java -Djarmode=layertools -jar app.jar extract
+
+# Stage 2: Run image
+FROM eclipse-temurin:21-jdk-alpine3.13
+WORKDIR application
+# Copia as camadas do builder
+COPY --from=builder /application/dependencies/ ./
+COPY --from=builder /application/spring-boot-loader/ ./
+COPY --from=builder /application/snapshot-dependencies/ ./
+COPY --from=builder /application/application/ ./
+
+EXPOSE 8080
+ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"]

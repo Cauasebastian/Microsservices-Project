@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.sebastianDev</groupId>
-	<artifactId>Gateway-Service</artifactId>
+	<artifactId>gateway-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>Gateway-Service</name>
 	<description>Gateway-Service</description>
@@ -88,6 +88,27 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.3.2</version>
+				<configuration>
+					<from>
+						<image>eclipse-temurin:21-jdk-alpine</image>
+					</from>
+					<to>
+						<image>registry.hub.docker.com/cauasebastian/${project.artifactId}</image>
+					</to>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>dockerBuild</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
