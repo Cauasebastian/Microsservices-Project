@@ -33,10 +33,14 @@ build/
 .vscode/
 ### Pastas dos serviços ###
 ### My SQL Host Data ###
-my-sql-data
+mongo-data/
+mysql-inventory/
+mysql-order/
+mysql_inventory_data/
+mysql_order_data/
+mysql_upgrade.sql
+mysql_keycloack_data/
+mysql_keycloak_data/
+mysql_keycloak_data
 mongo-data
-/mysql_keycloak_data/
-/postgres/
-/postgres-inventory/
-/postgres-order/
-/grafana/
+
