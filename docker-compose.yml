@@ -1,37 +1,37 @@
 version: '3.7'
 
 services:
-  ## MySQL Docker Compose Config
-  postgres-order:
-    container_name: postgres-order
-    image: postgres
+  mysql-order:
+    container_name: mysql-order
+    image: mysql:5.7
     environment:
-      POSTGRES_DB: order-service
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      PGDATA: /data/postgres
-    volumes:
-      - ./postgres-order:/data/postgres
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: order_service
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: password
     expose:
-      - "5431"
+      - "3306"
     ports:
-      - "5431:5431"
-    command: -p 5431
+      - "3306:3306"
     restart: always
-
-  postgres-inventory:
-    container_name: postgres-inventory
-    image: postgres
-    environment:
-      POSTGRES_DB: inventory-service
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      PGDATA: /data/postgres
     volumes:
-      - ./postgres-inventory:/data/postgres
+      - ./mysql_order_data:/var/lib/mysql
+
+  mysql-inventory:
+    container_name: mysql-inventory
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: inventory_service
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: password
+    expose:
+      - "3306"
     ports:
-      - "5432:5432"
+      - "3307:3306"  # Mapeamento de porta ajustado
     restart: always
+    volumes:
+      - ./mysql_inventory_data:/var/lib/mysql
 
   ## Mongo Docker Compose Config
   mongo:
@@ -64,10 +64,12 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092  # Removemos o PLAINTEXT_INTERNAL
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://broker:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,PLAINTEXT_INTERNAL://broker:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
 
   ## Keycloak Config with Mysql database
   keycloak-mysql:
@@ -87,7 +89,7 @@ services:
     command: [ "start-dev", "--import-realm" ]
     environment:
       DB_VENDOR: MYSQL
-      DB_ADDR: mysql
+      DB_ADDR: keycloak-mysql  # Corrigido para apontar para o serviço correto
       DB_DATABASE: keycloak
       DB_USER: keycloak
       DB_PASSWORD: password
@@ -99,7 +101,6 @@ services:
       - ./realms/:/opt/keycloak/data/import/
     depends_on:
       - keycloak-mysql
-
 
   ## Zipkin
   zipkin:
@@ -134,7 +135,6 @@ services:
       - discovery-server
       - keycloak
 
-
   ## Product-Service Docker Compose Config
   product-service:
     container_name: product-service
@@ -152,9 +152,11 @@ services:
     image: cauasebastian/order-service:latest
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-order:5431/order-service
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-order:3306/order_service
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
-      - postgres-order
+      - mysql-order
       - broker
       - zipkin
       - discovery-server
@@ -166,9 +168,11 @@ services:
     image: cauasebastian/inventory-service:latest
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-inventory:5432/inventory-service
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-inventory:3306/inventory_service
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
-      - postgres-inventory
+      - mysql-inventory
       - discovery-server
       - api-gateway
 
