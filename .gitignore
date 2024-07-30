@@ -42,5 +42,6 @@ mysql_upgrade.sql
 mysql_keycloack_data/
 mysql_keycloak_data/
 mysql_keycloak_data
-mongo-data
+mongo-data\
+grafana\
 

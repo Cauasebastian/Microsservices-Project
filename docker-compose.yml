@@ -1,5 +1,9 @@
 version: '3.7'
 
+networks:
+  microsservices-network:
+    external: true
+
 services:
   mysql-order:
     container_name: mysql-order
@@ -16,6 +20,8 @@ services:
     restart: always
     volumes:
       - ./mysql_order_data:/var/lib/mysql
+    networks:
+      - microsservices-network
 
   mysql-inventory:
     container_name: mysql-inventory
@@ -28,12 +34,13 @@ services:
     expose:
       - "3306"
     ports:
-      - "3307:3306"  # Mapeamento de porta ajustado
+      - "3307:3306"
     restart: always
     volumes:
       - ./mysql_inventory_data:/var/lib/mysql
+    networks:
+      - microsservices-network
 
-  ## Mongo Docker Compose Config
   mongo:
     container_name: mongo
     image: mongo:4.4.14-rc0-focal
@@ -44,6 +51,8 @@ services:
       - "27017"
     volumes:
       - ./mongo-data:/data/db
+    networks:
+      - microsservices-network
 
   zookeeper:
     image: 'bitnami/zookeeper:latest'
@@ -51,7 +60,9 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-      ALLOW_ANONYMOUS_LOGIN: "yes"  # Permitir conexão anônima
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    networks:
+      - microsservices-network
 
   broker:
     image: 'bitnami/kafka:latest'
@@ -69,9 +80,9 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - microsservices-network
 
-
-  ## Keycloak Config with Mysql database
   keycloak-mysql:
     container_name: keycloak-mysql
     image: mysql:5.7
@@ -82,6 +93,8 @@ services:
       MYSQL_DATABASE: keycloak
       MYSQL_USER: keycloak
       MYSQL_PASSWORD: password
+    networks:
+      - microsservices-network
 
   keycloak:
     container_name: keycloak
@@ -89,7 +102,7 @@ services:
     command: [ "start-dev", "--import-realm" ]
     environment:
       DB_VENDOR: MYSQL
-      DB_ADDR: keycloak-mysql  # Corrigido para apontar para o serviço correto
+      DB_ADDR: keycloak-mysql
       DB_DATABASE: keycloak
       DB_USER: keycloak
       DB_PASSWORD: password
@@ -101,15 +114,17 @@ services:
       - ./realms/:/opt/keycloak/data/import/
     depends_on:
       - keycloak-mysql
+    networks:
+      - microsservices-network
 
-  ## Zipkin
   zipkin:
     image: openzipkin/zipkin
     container_name: zipkin
     ports:
       - "9411:9411"
+    networks:
+      - microsservices-network
 
-  ## Eureka Server
   discovery-server:
     image: cauasebastian/discovery-service:latest
     container_name: discovery-server
@@ -119,6 +134,8 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - zipkin
+    networks:
+      - microsservices-network
 
   api-gateway:
     image: cauasebastian/gateway-service:latest
@@ -134,8 +151,9 @@ services:
       - zipkin
       - discovery-server
       - keycloak
+    networks:
+      - microsservices-network
 
-  ## Product-Service Docker Compose Config
   product-service:
     container_name: product-service
     image: cauasebastian/product-service:latest
@@ -145,8 +163,9 @@ services:
       - mongo
       - discovery-server
       - api-gateway
+    networks:
+      - microsservices-network
 
-  ## Order-Service Docker Compose Config
   order-service:
     container_name: order-service
     image: cauasebastian/order-service:latest
@@ -161,8 +180,9 @@ services:
       - zipkin
       - discovery-server
       - api-gateway
+    networks:
+      - microsservices-network
 
-  ## Inventory-Service Docker Compose Config
   inventory-service:
     container_name: inventory-service
     image: cauasebastian/inventory-service:latest
@@ -175,8 +195,9 @@ services:
       - mysql-inventory
       - discovery-server
       - api-gateway
+    networks:
+      - microsservices-network
 
-  ## Notification-Service Docker Compose Config
   notification-service:
     container_name: notification-service
     image: cauasebastian/notification-service:latest
@@ -187,3 +208,37 @@ services:
       - broker
       - discovery-server
       - api-gateway
+    networks:
+      - microsservices-network
+
+  prometheus:
+    image: prom/prometheus:v2.43.0
+    container_name: prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - product-service
+      - inventory-service
+      - order-service
+      - notification-service
+    networks:
+      - microsservices-network
+
+  grafana:
+    image: grafana/grafana-oss:8.5.2
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    links:
+      - prometheus:prometheus
+    volumes:
+      - ./grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password
+    networks:
+      - microsservices-network
