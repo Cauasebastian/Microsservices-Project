@@ -5,7 +5,7 @@ Este projeto visa explorar e implementar uma arquitetura de microserviços usand
 
 ## Imagem da arquitetura do projeto
 
-![image](assets/project-images/project-architecture.pdf)
+![image](assets/project-images/project-architecture.png)
 
 ## Funcionalidades
 - **Cadastro e consulta de produtos:** Interação com o banco de dados através do product-service.
@@ -53,7 +53,8 @@ Descrição geral de como os microserviços são organizados:
 
 ## Monitoramento e Rastreamento com Prometheus e Grafana
 
-![image](assets/project-images/grafana.png)]
+![image](assets/project-images/grafana.png)
+
 ![image](assets/project-images/prometheus.png)
 
 ## Executando o Projeto completo com Docker
@@ -62,7 +63,7 @@ Com o Docker Compose instalado e configurado, execute:
 docker-compose -f docker-compose.yml up --build
 ````
 Apos isso acesse o Keycloak em http://localhost:8080 e faça login com as credenciais admin/admin. Va em Clients -> spring-cloud-client -> Credentials e regenerar o Secret. Da maneira que está nessa foto.
-![image](assets/project-images/keycloak.png)
+![image](assets/project-images/keycloack.png)
 
 ## Acessando os Serviços
 - **Eureka Dashboard:** http://localhost:8761
@@ -75,21 +76,17 @@ Apos isso acesse o Keycloak em http://localhost:8080 e faça login com as creden
 NO Postman, crie uma nova requisição e adicione o token no header da requisição. O token pode ser obtido no endpoint http://localhost:8080/auth/realms/spring-cloud/protocol/openid-connect/token Ou se estiver utilizando as api pelo docker pode ser obtido no endpoint http://keyclock:8080/auth/realms/spring-cloud/protocol/openid-connect/token
 Para conseguir acessar um endpoint com autentificação pelo docker voce precisa ir em system32 -> drivers -> etc -> hosts e adicionar o ip do docker no arquivo hosts. Que no caso é 127.0.0.1 keyclock e precisa ser administrador para fazer isso.Se não fizer isso o docker não vai conseguir acessar o keyclock.
 
-![image](assets/project-images/keycloak.png)
-
 ### Apos conseguir o token, adicione o token no header da requisição
 Na aba de Authorization, selecione Bearer Token e cole o token obtido no campo Token da seguinte maneira:
 ![image](assets/project-images/postman.png)
 
 ## Endpoints dos Serviços Spring Boot
+![image](assets/project-images/eureka.png)
 - **Product Service:** http://localhost:8081/products
 - **Inventory Service:** http://localhost:8081/inventory
 - **Order Service:** http://localhost:8081/orders
 
 Apos isso voce pode acessar os endpoints dos serviços e testar as funcionalidades.
-
-![image](assets/project-images/zipkin.png)
-
 
 ## Executando o Projeto com Spring localmente 
 Para executar o projeto localmente, você precisará de Java 11 e Maven instalados em sua máquina. Clone o repositório e execute os seguintes comandos em cada diretório de serviço:
