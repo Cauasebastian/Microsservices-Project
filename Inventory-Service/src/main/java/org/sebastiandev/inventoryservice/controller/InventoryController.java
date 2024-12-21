@@ -1,10 +1,11 @@
 package org.sebastiandev.inventoryservice.controller;
 
+import org.sebastiandev.inventoryservice.dto.InventoryRequest;
 import org.sebastiandev.inventoryservice.dto.InventoryResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
 import org.sebastiandev.inventoryservice.service.InventoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -21,4 +22,10 @@ public class InventoryController {
         return inventoryService.isInStock(skuCode);
     }
 
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public boolean createInventory(@RequestBody InventoryRequest inventoryRequest) {
+        inventoryService.createInventory(inventoryRequest);
+        return true;
+    }
 }
