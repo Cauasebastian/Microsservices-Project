@@ -14,8 +14,8 @@ public class SwaggerConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Procesy API")
+                        .title("Inventory Service API")
                         .version("1.0")
-                        .description("API para gerenciamento de processos judiciais"));
+                        .description("API para gerenciamento de estoque de produtos"));
     }
 }
