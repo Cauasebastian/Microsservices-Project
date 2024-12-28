@@ -84,4 +84,22 @@ public class ProductServiceImpl implements ProductService {
                         .build())
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public ProductResponse getProduct(String productId) {
+        log.info("Getting product with id: {}", productId);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found with id: " + productId));
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .build();
+    }
+
+    @Override
+    public void updateProduct(Long productId, ProductRequest productRequest) {
+
+    }
 }

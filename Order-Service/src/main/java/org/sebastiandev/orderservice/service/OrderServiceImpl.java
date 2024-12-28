@@ -90,4 +90,14 @@ public class OrderServiceImpl implements OrderService {
             }
         });
     }
+
+    @Override
+    public Void cancelOrder(Long orderId) {
+        return null;
+    }
+
+    @Override
+    public OrderResponse getOrder(Long orderId) {
+        return null;
+    }
 }
