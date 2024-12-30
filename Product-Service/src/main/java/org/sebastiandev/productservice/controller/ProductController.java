@@ -26,10 +26,17 @@ public class ProductController {
     public List<ProductResponse> getAllProducts() {
         return productService.getAllProducts();
     }
+
     @GetMapping("/{productId}")
     @ResponseStatus(HttpStatus.OK)
     public ProductResponse getProduct(@PathVariable String productId) {
         return productService.getProduct(productId);
     }
 
+    // Delete all products, for testing purposes
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.OK)
+    public void deleteAllProducts() {
+        productService.deleteAllProducts();
+    }
 }

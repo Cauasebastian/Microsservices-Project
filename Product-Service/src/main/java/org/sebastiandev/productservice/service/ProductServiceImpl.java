@@ -8,8 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.sebastiandev.productservice.dto.InventoryRequest;
 import org.sebastiandev.productservice.dto.ProductRequest;
 import org.sebastiandev.productservice.dto.ProductResponse;
+import org.sebastiandev.productservice.dto.event.ProductCreatedEvent;
 import org.sebastiandev.productservice.model.Product;
 import org.sebastiandev.productservice.repository.ProductRepository;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -25,31 +28,36 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final WebClient.Builder webClientBuilder;
 
+    private final KafkaTemplate<String, ProductCreatedEvent> kafkaTemplate;
+
     @Override
     public void createProduct(ProductRequest productRequest) {
+        log.error("............................................................................");
         log.info("Creating product with name: {}", productRequest.name());
+        log.error("............................................................................");
         Product product = Product.builder()
                 .name(productRequest.name())
                 .description(productRequest.description())
                 .price(productRequest.price())
                 .build();
         productRepository.save(product);
+        log.error("............................................................................");
         log.info("Product created with id: {}", product.getId());
+        log.error("............................................................................");
 
-        // Criar Inventory Request
-        InventoryRequest inventoryRequest = InventoryRequest.builder()
-                .skuCode(product.getName()) // Nome do produto é usado como skuCode
+        // Criar e publicar o evento
+        ProductCreatedEvent event = ProductCreatedEvent.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
                 .quantity(productRequest.quantity())
                 .build();
 
-        // Enviar solicitação para Inventory-Service
-        sendInventoryRequest(inventoryRequest).thenAccept(response -> {
-            if (response) {
-                log.info("Inventory created successfully for product: {}", product.getId());
-            } else {
-                log.warn("Failed to create inventory for product: {}", product.getId());
-            }
-        });
+        kafkaTemplate.send("product-topic", event);
+        log.error("............................................................................");
+        log.info("ProductCreatedEvent published for product id: {}", product.getId());
+        log.error("............................................................................");
     }
 
     @CircuitBreaker(name = "inventory", fallbackMethod = "inventoryFallback")
@@ -101,5 +109,10 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void updateProduct(Long productId, ProductRequest productRequest) {
 
+    }
+
+    @Override
+    public void deleteAllProducts() {
+        productRepository.deleteAll();
     }
 }

@@ -8,4 +8,6 @@ import java.util.List;
 public interface InventoryService {
     List<InventoryResponse> isInStock(List<String> skuCode);
     void createInventory(InventoryRequest inventoryRequest);
+    List<InventoryResponse> AllInventory();
+    void deleteAllInventory();
 }

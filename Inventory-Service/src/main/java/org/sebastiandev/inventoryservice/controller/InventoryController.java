@@ -28,4 +28,15 @@ public class InventoryController {
         inventoryService.createInventory(inventoryRequest);
         return true;
     }
+    @GetMapping("/all")
+    @ResponseStatus(HttpStatus.OK)
+    public List<InventoryResponse> AllInventory() {
+        return inventoryService.AllInventory();
+    }
+    //Delete all inventory, for testing purposes
+    @DeleteMapping("/all")
+    @ResponseStatus(HttpStatus.OK)
+    public void deleteAllInventory() {
+        inventoryService.deleteAllInventory();
+    }
 }
