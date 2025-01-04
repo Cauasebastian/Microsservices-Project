@@ -45,3 +45,8 @@ mysql_keycloak_data
 mongo-data\
 grafana\
 
+mongo-data/diagnostic.data/metrics.interim
+grafana/grafana.db
+grafana/grafana.db
+grafana/alerting/1/__default__.tmpl
+.idea/compiler.xml
