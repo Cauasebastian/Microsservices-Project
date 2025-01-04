@@ -2,7 +2,6 @@ package org.sebastiandev.orderservice.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.sebastiandev.orderservice.model.OrderLineItems;
 import java.util.List;
 
 @Entity
@@ -17,7 +16,14 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String orderNumber;
-    @OneToMany(cascade = CascadeType.ALL)
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderLineItems> orderLineItems;
 
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
+
+    public enum OrderStatus {
+        PENDING, CONFIRMED, CANCELLED
+    }
 }

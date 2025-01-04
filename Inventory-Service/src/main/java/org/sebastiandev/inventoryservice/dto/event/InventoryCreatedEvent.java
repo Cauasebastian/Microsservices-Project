@@ -7,10 +7,10 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class InventoryCreatedEvent {
     private String skuCode;
     private int quantity;
-    private boolean success;
+    private boolean inStock;
 }

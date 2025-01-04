@@ -1,4 +1,4 @@
-package org.sebastiandev.inventoryservice.dto;
+package org.sebastiandev.inventoryservice.dto.event;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class InventoryRequest {
+public class OrderCreatedEvent {
+    private Long orderId;
+    private String orderNumber;
     private String skuCode;
     private int quantity;
 }

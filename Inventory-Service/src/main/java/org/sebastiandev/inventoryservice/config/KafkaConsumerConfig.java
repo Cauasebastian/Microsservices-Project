@@ -2,7 +2,7 @@ package org.sebastiandev.inventoryservice.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.sebastiandev.inventoryservice.dto.event.ProductCreatedEvent;
+import org.sebastiandev.inventoryservice.dto.event.OrderCreatedEvent; // Importe seu tipo de evento
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -20,8 +20,8 @@ import java.util.Map;
 public class KafkaConsumerConfig {
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, ProductCreatedEvent> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, ProductCreatedEvent> factory =
+    public ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
         // Associa a ConsumerFactory personalizada
@@ -37,7 +37,7 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public DefaultKafkaConsumerFactory<String, ProductCreatedEvent> consumerFactory() {
+    public DefaultKafkaConsumerFactory<String, OrderCreatedEvent> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
         // Configurações básicas de bootstrap e groupId
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
@@ -60,16 +60,13 @@ public class KafkaConsumerConfig {
         props.put(JsonDeserializer.REMOVE_TYPE_INFO_HEADERS, true);
 
         // Pacotes confiáveis - deve incluir o pacote onde seu evento está
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "org.sebastiandev.*");
-
-        // Pode configurar mais propriedades do JsonDeserializer se precisar
-        // props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 
         // Cria o DefaultKafkaConsumerFactory usando os ErrorHandlingDeserializers
         return new DefaultKafkaConsumerFactory<>(
                 props,
                 new ErrorHandlingDeserializer<>(new StringDeserializer()),
-                new ErrorHandlingDeserializer<>(new JsonDeserializer<>(ProductCreatedEvent.class))
+                new ErrorHandlingDeserializer<>(new JsonDeserializer<>(OrderCreatedEvent.class))
         );
     }
 }

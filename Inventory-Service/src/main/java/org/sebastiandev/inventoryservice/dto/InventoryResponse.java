@@ -1,7 +1,11 @@
 package org.sebastiandev.inventoryservice.dto;
 
 import lombok.Builder;
+import lombok.Data;
 
+@Data
 @Builder
-public record InventoryResponse(String skuCode, boolean inStock) {
+public class InventoryResponse {
+    private String skuCode;
+    private boolean inStock;
 }

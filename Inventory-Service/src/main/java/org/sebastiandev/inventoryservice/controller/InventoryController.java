@@ -2,6 +2,7 @@ package org.sebastiandev.inventoryservice.controller;
 
 import org.sebastiandev.inventoryservice.dto.InventoryRequest;
 import org.sebastiandev.inventoryservice.dto.InventoryResponse;
+import org.sebastiandev.inventoryservice.model.Inventory;
 import org.sebastiandev.inventoryservice.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,12 +29,13 @@ public class InventoryController {
         inventoryService.createInventory(inventoryRequest);
         return true;
     }
+
     @GetMapping("/all")
     @ResponseStatus(HttpStatus.OK)
-    public List<InventoryResponse> AllInventory() {
+    public List<Inventory> AllInventory() {
         return inventoryService.AllInventory();
     }
-    //Delete all inventory, for testing purposes
+    // Delete all inventory, for testing purposes
     @DeleteMapping("/all")
     @ResponseStatus(HttpStatus.OK)
     public void deleteAllInventory() {

@@ -1,6 +1,5 @@
-package org.sebastiandev.inventoryservice.config;
+package org.sebastiandev.orderservice.config;
 
-import org.sebastiandev.inventoryservice.dto.event.InventoryCreatedEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;

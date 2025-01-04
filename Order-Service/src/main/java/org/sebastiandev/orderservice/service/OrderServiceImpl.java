@@ -1,23 +1,20 @@
 package org.sebastiandev.orderservice.service;
 
-import io.micrometer.observation.Observation;
-import io.micrometer.observation.ObservationRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.sebastiandev.orderservice.dto.InventoryResponse;
+import org.hibernate.Hibernate;
 import org.sebastiandev.orderservice.dto.OrderRequest;
 import org.sebastiandev.orderservice.dto.OrderResponse;
-import org.sebastiandev.orderservice.event.OrderPlacedEvent;
+import org.sebastiandev.orderservice.dto.event.OrderCreatedEvent;
 import org.sebastiandev.orderservice.model.Order;
 import org.sebastiandev.orderservice.model.OrderLineItems;
 import org.sebastiandev.orderservice.repository.OrderRepository;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,78 +23,65 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
-    private final WebClient.Builder webClientBuilder;
-    private final ObservationRegistry observationRegistry;
-    private final KafkaTemplate<String,OrderPlacedEvent> kafkaTemplate;
+    private final OrderEventProducer orderEventProducer;
 
     @Override
     public OrderResponse placeOrder(OrderRequest orderRequest) {
-        // Construa os itens do pedido
+        // Constrói os itens do pedido
         List<OrderLineItems> orderLineItems = new ArrayList<>();
-        orderRequest.orderLineItems().forEach(item -> {
+        orderRequest.getOrderLineItems().forEach(item -> {
             OrderLineItems lineItem = new OrderLineItems();
-            lineItem.setSkuCode(item.skuCode());
-            lineItem.setPrice(item.price());
-            lineItem.setQuantity(item.quantity());
+            lineItem.setSkuCode(item.getSkuCode());
+            lineItem.setPrice(item.getPrice());
+            lineItem.setQuantity(item.getQuantity());
             orderLineItems.add(lineItem);
         });
 
-        // Extraia os códigos SKU dos itens do pedido
-        List<String> skuCodes = orderLineItems.stream()
-                .map(OrderLineItems::getSkuCode)
-                .collect(Collectors.toList());
-
-        // Crie uma observação para o serviço de inventário
-        Observation inventoryServiceObservation = Observation.createNotStarted("inventory-service-lookup",
-                this.observationRegistry);
-        inventoryServiceObservation.lowCardinalityKeyValue("call", "inventory-service");
-        return inventoryServiceObservation.observe(() -> {
-        // Faça a solicitação ao serviço de inventário para verificar o estoque
-        InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
-                .uri("http://inventory-service/inventory", uriBuilder -> uriBuilder.queryParam("skuCode", skuCodes.toArray()).build())
-                .retrieve()
-                .bodyToMono(InventoryResponse[].class)
-                .block();
-
-        // Crie um mapa de SKU para o status de estoque
-        Map<String, Boolean> inventoryMap = Arrays.stream(inventoryResponseArray)
-                .collect(Collectors.toMap(InventoryResponse::skuCode, InventoryResponse::inStock));
-
-        // Verifique se todos os produtos estão em estoque
-        boolean allProductsInStock = orderLineItems.stream()
-                .allMatch(item -> inventoryMap.getOrDefault(item.getSkuCode(), false));
-
-        if (!allProductsInStock) {
-            return OrderResponse.builder()
-                    .message("Some products are out of stock or insufficient quantity")
-                    .build();
-        }
-
-        // Processar o pedido se tudo está em estoque
-            if(allProductsInStock){
+        // Cria o pedido e salva no banco com status PENDING
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
         order.setOrderLineItems(orderLineItems);
-        orderRepository.save(order);
-        kafkaTemplate.send("notificationTopic", new OrderPlacedEvent(order.getOrderNumber()));
+        order.setStatus(Order.OrderStatus.PENDING);
+        Order savedOrder = orderRepository.save(order);
+
+        // Cria o evento OrderCreatedEvent e envia para o Kafka
+        OrderCreatedEvent orderCreatedEvent = OrderCreatedEvent.builder()
+                .orderId(savedOrder.getId())
+                .orderNumber(savedOrder.getOrderNumber())
+                .skuCode(savedOrder.getOrderLineItems().get(0).getSkuCode()) // Supondo um SKU por pedido
+                .quantity(savedOrder.getOrderLineItems().get(0).getQuantity())
+                .build();
+
+        orderEventProducer.sendOrderCreatedEvent(orderCreatedEvent);
 
         return OrderResponse.builder()
-                .orderNumber(order.getOrderNumber())
+                .orderNumber(savedOrder.getOrderNumber())
                 .message("Order placed successfully")
                 .build();
-    }else {
-                throw new IllegalArgumentException("Product is not in stock, please try again later");
-            }
-        });
     }
 
     @Override
     public Void cancelOrder(Long orderId) {
+        // Implementar lógica para cancelar o pedido
         return null;
     }
 
     @Override
     public OrderResponse getOrder(Long orderId) {
+        // Implementar lógica para obter um pedido
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Order> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        orders.forEach(order -> Hibernate.initialize(order.getOrderLineItems())); // Inicializa explicitamente
+        return orders;
+    }
+
+    @Override
+    public void deleteAllOrders() {
+        orderRepository.deleteAll();
     }
 }

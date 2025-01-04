@@ -7,10 +7,12 @@ import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.sebastiandev.orderservice.dto.OrderResponse;
+import org.sebastiandev.orderservice.model.Order;
 import org.sebastiandev.orderservice.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
@@ -35,5 +37,17 @@ public class OrderController {
         return CompletableFuture.supplyAsync(() -> OrderResponse.builder()
                 .message("Oops! Something went wrong, please order after some time!")
                 .build());
+    }
+
+    // Get all orders
+    @GetMapping
+    public List<Order> getAllOrders() {
+        return orderService.getAllOrders();
+    }
+    //delete all orders for testing purposes
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.OK)
+    public void deleteAllOrders() {
+        orderService.deleteAllOrders();
     }
 }
